@@ -1,14 +1,21 @@
 import os, sys
 from os.path import join as joinpath
+import SCons
 
 useIcc = False
 #useIcc = True
+
+nvmainSources = []
+# Function used in hierarchical SConscript's found in NVMain sources
+def NVMainSource(src):
+    nvmainSources.append(File(src))
+Export('NVMainSource')
 
 def buildSim(cppFlags, dir, type, pgo=None):
     ''' Build the simulator with a specific base buid dir and config type'''
 
     buildDir = joinpath(dir, type)
-    print "Building " + type + " zsim at " + buildDir
+    print("Building " + type + " zsim at " + buildDir)
 
     env = Environment(ENV = os.environ, tools = ['default', 'textfile'])
     env["CPPFLAGS"] = cppFlags
@@ -17,10 +24,10 @@ def buildSim(cppFlags, dir, type, pgo=None):
     versionFile = joinpath(buildDir, "version.h")
     if os.path.exists(".git"):
         env.Command(versionFile, allSrcs + [".git/index", "SConstruct"],
-            'printf "#define ZSIM_BUILDDATE \\"`date`\\"\\n#define ZSIM_BUILDVERSION \\"`python misc/gitver.py`\\"" >>' + versionFile)
+            'echo "#define ZSIM_BUILDDATE \\""`date`\\""\\\\n#define ZSIM_BUILDVERSION \\""`python misc/gitver.py`\\""" >>' + versionFile)
     else:
         env.Command(versionFile, allSrcs + ["SConstruct"],
-            'printf "#define ZSIM_BUILDDATE \\"`date`\\"\\n#define ZSIM_BUILDVERSION \\"no git repo\\"" >>' + versionFile)
+            'echo "#define ZSIM_BUILDDATE \\""`date`\\""\\\\n#define ZSIM_BUILDVERSION \\""no git repo\\""" >>' + versionFile)
 
     # Parallel builds?
     #env.SetOption('num_jobs', 32)
@@ -29,6 +36,8 @@ def buildSim(cppFlags, dir, type, pgo=None):
     #env['CXX'] = 'g++ -flto -flto-report -fuse-linker-plugin'
     #env['CC'] = 'gcc -flto'
     #env["LINKFLAGS"] = " -O3 -finline "
+    env['CXX'] ='g++-4.8'
+    env['CC'] = 'g++-4.8'
     if useIcc:
         env['CC'] = 'icc'
         env['CXX'] = 'icpc -ipo'
@@ -37,7 +46,7 @@ def buildSim(cppFlags, dir, type, pgo=None):
     if "PINPATH" in os.environ:
         PINPATH = os.environ["PINPATH"]
     else:
-       print "ERROR: You need to define the $PINPATH environment variable with Pin's path"
+       print("ERROR: You need to define the $PINPATH environment variable with Pin's path")
        sys.exit(1)
 
     ROOT = Dir('.').abspath
@@ -45,9 +54,9 @@ def buildSim(cppFlags, dir, type, pgo=None):
     # NOTE: These flags are for the 28/02/2011 2.9 PIN kit (rev39599). Older versions will not build.
     # NOTE (dsm 10 Jan 2013): Tested with Pin 2.10 thru 2.12 as well
     # NOTE: Original Pin flags included -fno-strict-aliasing, but zsim does not do type punning
-    # NOTE (dsm 16 Apr 2015): Update flags code to support Pin 2.14 while retaining backwards compatibility
     env["CPPFLAGS"] += " -g -std=c++0x -Wall -Wno-unknown-pragmas -fomit-frame-pointer -fno-stack-protector"
     env["CPPFLAGS"] += " -MMD -DBIGARRAY_MULTIPLIER=1 -DUSING_XED -DTARGET_IA32E -DHOST_IA32E -fPIC -DTARGET_LINUX"
+    env["CPPFLAGS"] += " -fabi-version=2 -D_GLIBCXX_USE_CXX11_ABI=0 -fpermissive"
 
     # Pin 2.12+ kits have changed the layout of includes, detect whether we need
     # source/include/ or source/include/pin/
@@ -56,6 +65,11 @@ def buildSim(cppFlags, dir, type, pgo=None):
         pinInclDir = joinpath(pinInclDir, "pin")
         assert os.path.exists(joinpath(pinInclDir, "pin.H"))
 
+    env["CPPPATH"] = [joinpath(PINPATH, "extras/xed2-intel64/include"),
+            pinInclDir, joinpath(pinInclDir, "gen"),
+            joinpath(PINPATH, "extras/components/include"), joinpath("/usr/include/hdf5/serial")]
+    
+    #============================================= 
     # Pin 2.14 changes location of XED
     xedName = "xed2"  # used below
     xedPath = joinpath(PINPATH, "extras/" + xedName + "-intel64/include")
@@ -66,16 +80,16 @@ def buildSim(cppFlags, dir, type, pgo=None):
 
     env["CPPPATH"] = [xedPath,
             pinInclDir, joinpath(pinInclDir, "gen"),
-            joinpath(PINPATH, "extras/components/include")]
+            joinpath(PINPATH, "extras/components/include"), joinpath("/usr/include/hdf5/serial")]
 
-    # Perform trace logging?
+    # Perform trace logging? 
     ##env["CPPFLAGS"] += " -D_LOG_TRACE_=1"
-
+    
     # Uncomment to get logging messages to stderr
     ##env["CPPFLAGS"] += " -DDEBUG=1"
 
     # Be a Warning Nazi? (recommended)
-    env["CPPFLAGS"] += " -Werror "
+    #env["CPPFLAGS"] += " -Werror "
 
     # Enables lib and harness to use the same info/log code,
     # but only lib uses pin locks for thread safety
@@ -83,13 +97,31 @@ def buildSim(cppFlags, dir, type, pgo=None):
 
     # PIN-specific libraries
     env["PINLINKFLAGS"] = " -Wl,--hash-style=sysv -Wl,-Bsymbolic -Wl,--version-script=" + joinpath(pinInclDir, "pintool.ver")
-
+    
     # To prime system libs, we include /usr/lib and /usr/lib/x86_64-linux-gnu
     # first in lib path. In particular, this solves the issue that, in some
     # systems, Pin's libelf takes precedence over the system's, but it does not
     # include symbols that we need or it's a different variant (we need
     # libelfg0-dev in Ubuntu systems)
-    env["PINLIBPATH"] = ["/usr/lib", "/usr/lib/x86_64-linux-gnu", joinpath(PINPATH, "extras/" + xedName + "-intel64/lib"),
+    env["PINLIBPATH"] = ["/usr/lib", "/usr/lib/x86_64-linux-gnu", joinpath(PINPATH, "extras/xed2-intel64/lib"),
+            joinpath(PINPATH, "intel64/lib"), joinpath(PINPATH, "intel64/lib-ext")]
+
+    # Libdwarf is provided in static and shared variants, Ubuntu only provides
+    # static, and I don't want to add -R<pin path/intel64/lib-ext> because
+    # there are some other old libraries provided there (e.g., libelf) and I
+    # want to use the system libs as much as possible. So link directly to the
+    # static version of libdwarf.
+    env["PINLIBS"] = ["pin", "xed", File(joinpath(PINPATH, "intel64/lib-ext/libdwarf.a")), "elf", "dl", "rt"]
+    
+
+
+    #==================================================
+    # To prime system libs, we include /usr/lib and /usr/lib/x86_64-linux-gnu
+    # first in lib path. In particular, this solves the issue that, in some
+    # systems, Pin's libelf takes precedence over the system's, but it does not
+    # include symbols that we need or it's a different variant (we need
+    # libelfg0-dev in Ubuntu systems)
+    env["PINLIBPATH"] = ["/usr/lib", "/usr/lib/x86_64-linux-gnu", "/usr/lib/x86_64-linux-gnu/hdf5/serial/", joinpath(PINPATH, "extras/" + xedName + "-intel64/lib"),
             joinpath(PINPATH, "intel64/lib"), joinpath(PINPATH, "intel64/lib-ext")]
 
     # Libdwarf is provided in static and shared variants, Ubuntu only provides
@@ -106,9 +138,12 @@ def buildSim(cppFlags, dir, type, pgo=None):
 
     env["PINLIBS"] = ["pin", "xed", pindwarfLib, "elf", "dl", "rt"]
 
+
     # Non-pintool libraries
     env["LIBPATH"] = []
     env["LIBS"] = ["config++"]
+    env["LIBS"] += ["glog"]
+	#env["LIBS"] += ["gflags"]
 
     env["LINKFLAGS"] = ""
 
@@ -122,7 +157,7 @@ def buildSim(cppFlags, dir, type, pgo=None):
         env["LINKFLAGS"] += " -Wl,-R" + joinpath(LIBCONFIGPATH, "lib")
         env["LIBPATH"] += [joinpath(LIBCONFIGPATH, "lib")]
         env["CPPPATH"] += [joinpath(LIBCONFIGPATH, "include")]
-
+    
 
     if "POLARSSLPATH" in os.environ:
         POLARSSLPATH = os.environ["POLARSSLPATH"]
@@ -140,14 +175,50 @@ def buildSim(cppFlags, dir, type, pgo=None):
         env["PINLIBS"] += ["dramsim"]
         env["CPPFLAGS"] += " -D_WITH_DRAMSIM_=1 "
 
+    # Only include NVMain if available
+    if "NVMAINPATH" in os.environ:
+        NVMAINPATH = os.environ["NVMAINPATH"]
+        env["LINKFLAGS"] += " -Wl,-R" + NVMAINPATH
+        env["CPPPATH"] += [NVMAINPATH]
+        env["CPPFLAGS"] += " -D_WITH_NVMAIN_=1 "
+        for root, dirs, files in os.walk(NVMAINPATH, topdown=True):
+            # Don't check nvmain's build folder if it exists
+            if 'build' in root:
+                continue
+
+            if 'SConscript' in files:
+                dir = joinpath(buildDir, root[len(NVMAINPATH)-6:])
+                SConscript(joinpath(root, 'SConscript'), variant_dir=dir, exports='env')
+        env["NVMAINSOURCES"] = nvmainSources
+
+    if "HDF5PATH" in os.environ:
+        HDF5PATH = os.environ["HDF5PATH"]
+        env["LINKFLAGS"] += " -Wl,-R" + joinpath(HDF5PATH, "lib")
+        env["LIBPATH"] += [joinpath(HDF5PATH, "lib")]
+        env["CPPPATH"] += [joinpath(HDF5PATH, "include")]
+
     env["CPPPATH"] += ["."]
 
     # HDF5
     env["PINLIBS"] += ["hdf5", "hdf5_hl"]
+    env["LINKFLAGS"] += " -L/usr/lib/x86_64-linux-gnu/hdf5/serial/"
 
     # Harness needs these defined
     env["CPPFLAGS"] += ' -DPIN_PATH="' + joinpath(PINPATH, "intel64/bin/pinbin") + '" '
-    env["CPPFLAGS"] += ' -DZSIM_PATH="' + joinpath(ROOT, joinpath(buildDir, "libzsim.so")) + '" '
+    if "LIBZSIMPATH" in os.environ:
+        env["CPPFLAGS"] += ' -DZSIM_PATH="' + os.environ["LIBZSIMPATH"] + '" '
+    else:
+        #env["CPPFLAGS"] += ' -DZSIM_PATH="' + joinpath(ROOT, joinpath(buildDir, "libzsim.so")) + '" '
+        env["CPPFLAGS"] += ' -DZSIM_PATH="' + joinpath(ROOT,"bin/libzsim.so") + '" '
+
+    # Boost regex
+    BOOST = os.environ["BOOST"]
+    include_path = os.environ['BOOST']+"/include"
+    lib_path = os.environ['BOOST']+"/lib"
+    env["CPPPATH"] += [include_path]
+    env["LIBPATH"] += [lib_path]
+    env["LIBS"] += ["boost_regex"]
+    print(("env[cpppath]%s" % env["CPPPATH"]))
 
     # Do PGO?
     if pgo == "generate":
@@ -182,7 +253,7 @@ if GetOption('optBuild') or len(buildTypes) == 0: buildTypes.append("opt")
 march = "core2" # ensure compatibility across condor nodes
 #march = "native" # for profiling runs
 
-buildFlags = {"debug": "-g -O0",
+buildFlags = {"debug": "-g -O0", 
               "opt": "-march=%s -g -O3 -funroll-loops" % march, # unroll loops tends to help in zsim, but in general it can cause slowdown
               "release": "-march=%s -O3 -DNASSERT -funroll-loops -fweb" % march} # fweb saves ~4% exec time, but makes debugging a world of pain, so careful
 
@@ -196,12 +267,12 @@ pgoPhase = GetOption('pgoPhase')
 # when you move the files. Check the repo for a version that tries this.
 if GetOption('pgoBuild'):
     for type in buildTypes:
-        print "Building PGO binary"
+        print("Building PGO binary")
         root = Dir('.').abspath
         testsDir = joinpath(root, "tests")
         trainCfgs = [f for f in os.listdir(testsDir) if f.startswith("pgo")]
-        print "Using training configs", trainCfgs
-
+        print("Using training configs", trainCfgs)
+        
         baseDir = joinpath(baseBuildDir, "pgo-" + type)
         genCmd = "scons -j16 --pgoPhase=generate-" + type
         runCmds = []
