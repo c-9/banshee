@@ -16,6 +16,8 @@
 **/.vscode/
 **/build/
 
+
+bin/
 *.h5
 *.out
 .sconsign.dblite
