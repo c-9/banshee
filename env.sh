@@ -1,9 +1,9 @@
 #!/bin/sh
 ZSIMPATH=$(pwd)
-PINPATH=$ZSIMPATH/lib/pin_2.14
+PINPATH=$ZSIMPATH/lib/pin-2.14
 NVMAINPATH=$ZSIMPATH/lib/nvmain
-BOOST=$ZSIMPATH/lib/boost_1_59_0
-LIBCONFIG=$ZSIMPATH/lib/libconfig-1.7.3
+BOOST=$ZSIMPATH/lib/boost
+LIBCONFIG=$ZSIMPATH/lib/libconfig
 HDF5=.
 DRAMSIMPATH=$ZSIMPATH/lib/dramsim2
 
