@@ -1,7 +1,7 @@
 #!/bin/bash
 source ./env.sh
 NUMCPUS=$(grep -c ^processor /proc/cpuinfo)
-
+buildtype=debug
 if [ "$1" = "all" ]
 then
 	echo "Compiling all ..."
@@ -24,10 +24,23 @@ then
 	cd -
 else
 	echo "Compiling only ZSim ..."
-	scons -j$NUMCPUS
-	mkdir bin
-	cd bin
-	ln -s ../build/opt/libzsim.so
-        ln -s ../build/opt/zsim
-	cd -
+	if [ "$buildtype" = "opt" ]
+	then
+		scons --o -j$NUMCPUS
+		mkdir bin && cd bin
+		ln -s ../build/opt/libzsim.so
+			ln -s ../build/opt/zsim
+		cd -
+	else 
+		if [ "$buildtype" = "debug" ]
+		then
+			scons --d -j$NUMCPUS
+			mkdir bin && cd bin
+			ln -s ../build/debug/libzsim.so
+			ln -s ../build/debug/zsim
+			cd -
+		fi
+	fi
+	
+	
 fi

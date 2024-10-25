@@ -36,7 +36,7 @@ def buildSim(cppFlags, dir, type, pgo=None):
         env['CXX'] = 'icpc -ipo'
 
     # Required paths
-    if "PINPATH" in os.environ:
+    if os.environ.get("PINPATH"):
         PINPATH = os.environ["PINPATH"]
     else:
        print("ERROR: You need to define the $PINPATH environment variable with Pin's path")
@@ -122,13 +122,13 @@ def buildSim(cppFlags, dir, type, pgo=None):
         env["LINKFLAGS"] += " -Wl,-R/data/sanchez/tools/intel/composer_xe_2013.1.117/compiler/lib/intel64/"
 
     # Use non-standard library paths if defined
-    if "LIBCONFIGPATH" in os.environ:
+    if os.environ.get("LIBCONFIGPATH"):
         LIBCONFIGPATH = os.environ["LIBCONFIGPATH"]
         env["LINKFLAGS"] += " -Wl,-R" + joinpath(LIBCONFIGPATH, "lib")
         env["LIBPATH"] += [joinpath(LIBCONFIGPATH, "lib")]
         env["CPPPATH"] += [joinpath(LIBCONFIGPATH, "include")]
 
-    if "HDF5PATH" in os.environ:
+    if os.environ.get("HDF5PATH"):
         HDF5PATH = os.getenv("HDF5PATH")
         env["CPPPATH"] += [joinpath(HDF5PATH, "include/")]
         env["LIBPATH"] += [joinpath(HDF5PATH, "lib/")]
@@ -138,7 +138,7 @@ def buildSim(cppFlags, dir, type, pgo=None):
         env["LIBPATH"] += ["/usr/lib/x86_64-linux-gnu/hdf5/serial/"]
         env["RPATH"]   += ["/usr/lib/x86_64-linux-gnu/hdf5/serial/"]
 
-    if "POLARSSLPATH" in os.environ:
+    if os.environ.get("POLARSSLPATH"):
         POLARSSLPATH = os.environ["POLARSSLPATH"]
         env["PINLIBPATH"] += [joinpath(POLARSSLPATH, "library")]
         env["CPPPATH"] += [joinpath(POLARSSLPATH, "include")]
@@ -146,13 +146,20 @@ def buildSim(cppFlags, dir, type, pgo=None):
         env["CPPFLAGS"] += " -D_WITH_POLARSSL_=1 "
 
     # Only include DRAMSim if available
-    if "DRAMSIMPATH" in os.environ:
+    if os.environ.get("DRAMSIMPATH"):
         DRAMSIMPATH = os.environ["DRAMSIMPATH"]
         env["LINKFLAGS"] += " -Wl,-R" + DRAMSIMPATH
         env["PINLIBPATH"] += [DRAMSIMPATH]
         env["CPPPATH"] += [DRAMSIMPATH]
         env["PINLIBS"] += ["dramsim"]
         env["CPPFLAGS"] += " -D_WITH_DRAMSIM_=1 "
+
+    if os.environ.get("GLIBCPATH"):
+        GLIBCPATH = os.environ["GLIBCPATH"]
+        env["LIBPATH"] += [joinpath(GLIBCPATH, "lib/")]
+        env["LINKFLAGS"] += ' -Wl,--rpath="' + joinpath(GLIBCPATH, "lib") + '" '
+        env["LINKFLAGS"] += ' -Wl,--dynamic-linker="' + joinpath(GLIBCPATH, "lib/ld-linux-x86-64.so.2") + '" '
+        env["CPPPATH"] += [joinpath(GLIBCPATH, "include/")]
 
     env["CPPPATH"] += ["."]
 

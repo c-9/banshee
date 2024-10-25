@@ -4,4 +4,4 @@ source ./env.sh
 sysctl -w kernel.shmmax=18446744073692774399
 sysctl -w kernel.yama.ptrace_scope=0
 
-./bin/zsim tests/test-m.cfg
+./bin/zsim tests/test.cfg

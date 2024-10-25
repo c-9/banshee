@@ -1,9 +1,9 @@
-Running on: swarm1
-Start time: Thu Feb 18 12:08:19 2016
-Heartbeat time: Thu Feb 18 12:08:24 2016
+Running on: 3e03f267c3b0
+Start time: Fri Oct 25 06:08:35 2024
+Heartbeat time: Fri Oct 25 06:08:39 2024
 Stats since start:
- 263 phases
- 2630000 cycles
- 526000 cycles/s
-Stats since last heartbeat (2s):
- 160000 cycles/s
+ 807 phases
+ 8070000 cycles
+ 2017500 cycles/s
+Stats since last heartbeat (1729836519s):
+ 0 cycles/s

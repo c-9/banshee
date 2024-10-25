@@ -16,8 +16,9 @@
 **/.vscode/
 **/build/
 
-
-*.h5
-*.out
-.sconsign.dblite
-heartbeat
+/bin
+/run.sh
+/*.h5
+/*.out
+/.sconsign.dblite
+/heartbeat
