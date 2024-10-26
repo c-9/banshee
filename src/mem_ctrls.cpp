@@ -87,6 +87,7 @@ uint64_t SimpleMemory::access(MemReq& req) {
         case GETX:
             *req.state = M;
             break;
+
         default: panic("!?");
     }
 

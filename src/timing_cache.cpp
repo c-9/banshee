@@ -211,9 +211,7 @@ uint64_t TimingCache::access(MemReq& req) {
             };
 
             // Get path
-			//printf("Here. accessRecord.respCycle=%ld, endCycle=%ld\n", accessRecord.respCycle, getDoneCycle);
             connect(accessRecord.isValid()? &accessRecord : nullptr, mse, mre, req.cycle + accLat, getDoneCycle);
-			//printf("Here 222\n");
             mre->addChild(mwe, evRec);
 
             // Eviction path

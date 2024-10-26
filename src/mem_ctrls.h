@@ -53,7 +53,9 @@ class SimpleMemory : public MemObject {
 		Chunk * temp;
     public:
         uint64_t access(MemReq& req);
+
         const char* getName() {return name.c_str();}
+        
         SimpleMemory(uint32_t _latency, g_string& _name, Config& config);
 };
 

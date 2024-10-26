@@ -547,7 +547,7 @@ MemoryController::access(MemReq& req)
 			if (_scheme == HybridCache) 
 				if (type == LOAD && _tag_buffer->canInsert(tag)) 
 					_tag_buffer->insert(tag, false);
-			assert(_scheme != Tagless)
+			assert(_scheme != Tagless);
 		}
 	} else { // cache_hit == true
 		assert(set_num >= _ds_index);

@@ -38,7 +38,6 @@ const char* Cache::getName() {
 }
 
 void Cache::setParents(uint32_t childId, const g_vector<MemObject*>& parents, Network* network) {
-	//printf("name = %s, parents.size()=%ld\n", name.c_str(), parents.size());
     cc->setParents(childId, parents, network);
 }
 

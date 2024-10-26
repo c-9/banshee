@@ -34,9 +34,7 @@
 class TimingEvent;
 
 // Encodes an event that the core should capture for the contention simulation
-struct TimingRecord 
-{
-public:
+struct TimingRecord {
     Address addr;
     uint64_t reqCycle;
     uint64_t respCycle;

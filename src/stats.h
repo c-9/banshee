@@ -273,7 +273,6 @@ class VectorCounter : public VectorStat {
         }
 
         inline void inc(uint32_t idx, uint64_t value) {
-			//assert(_counters);
             _counters[idx] += value;
         }
 
