@@ -11,11 +11,11 @@
 *.gch
 *.pch
 
-**/.DS_Store/
-**/.idea/
-**/.vscode/
-**/build/
+**/.DS_Store
+**/.idea
+**/.vscode
 
+/build
 /bin
 /run.sh
 /*.h5

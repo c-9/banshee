@@ -1,8 +1,12 @@
-import os, sys
+import os
+import sys
 from os.path import join as joinpath
+from pprint import pprint
 
+zsimpath = os.environ.get("ZSIMPATH", os.path.dirname(os.path.abspath('.')))
 useIcc = False
-#useIcc = True
+# useIcc = True
+
 
 def buildSim(cppFlags, dir, type, pgo=None):
     ''' Build the simulator with a specific base buid dir and config type'''
@@ -10,25 +14,27 @@ def buildSim(cppFlags, dir, type, pgo=None):
     buildDir = joinpath(dir, type)
     print("Building " + type + " zsim at " + buildDir)
 
-    env = Environment(ENV = os.environ, tools = ['default', 'textfile'])
+    env = Environment(ENV=os.environ, tools=['default', 'textfile'])
+    # pprint(dict(env))
     env["CPPFLAGS"] = cppFlags
 
-    allSrcs = [f for dir, subdirs, files in os.walk("src") for f in Glob(dir + "/*")]
+    allSrcs = [f for dir, subdirs, files in os.walk(
+        "src") for f in Glob(dir + "/*")]
     versionFile = joinpath(buildDir, "version.h")
     if os.path.exists(".git"):
         env.Command(versionFile, allSrcs + [".git/index", "SConstruct"],
-            'printf "#define ZSIM_BUILDDATE \\"`date`\\"\\n#define ZSIM_BUILDVERSION \\"`python misc/gitver.py`\\"" >>' + versionFile)
+                    'printf "#define ZSIM_BUILDDATE \\"`date`\\"\\n#define ZSIM_BUILDVERSION \\"`python misc/gitver.py`\\"" >>' + versionFile)
     else:
         env.Command(versionFile, allSrcs + ["SConstruct"],
-            'printf "#define ZSIM_BUILDDATE \\"`date`\\"\\n#define ZSIM_BUILDVERSION \\"no git repo\\"" >>' + versionFile)
+                    'printf "#define ZSIM_BUILDDATE \\"`date`\\"\\n#define ZSIM_BUILDVERSION \\"no git repo\\"" >>' + versionFile)
 
     # Parallel builds?
-    #env.SetOption('num_jobs', 32)
+    # env.SetOption('num_jobs', 32)
 
     # Use link-time optimization? It's still a bit buggy, so be careful
-    #env['CXX'] = 'g++ -flto -flto-report -fuse-linker-plugin'
-    #env['CC'] = 'gcc -flto'
-    #env["LINKFLAGS"] = " -O3 -finline "
+    # env['CXX'] = 'g++ -flto -flto-report -fuse-linker-plugin'
+    # env['CC'] = 'gcc -flto'
+    # env["LINKFLAGS"] = " -O3 -finline "
     env['CXX'] = 'g++-12'
     env['CC'] = 'g++-12'
     if useIcc:
@@ -39,8 +45,8 @@ def buildSim(cppFlags, dir, type, pgo=None):
     if os.environ.get("PINPATH"):
         PINPATH = os.environ["PINPATH"]
     else:
-       print("ERROR: You need to define the $PINPATH environment variable with Pin's path")
-       sys.exit(1)
+        print("ERROR: You need to define the $PINPATH environment variable with Pin's path")
+        sys.exit(1)
 
     ROOT = Dir('.').abspath
 
@@ -69,14 +75,14 @@ def buildSim(cppFlags, dir, type, pgo=None):
         assert os.path.exists(xedPath)
 
     env["CPPPATH"] = [xedPath,
-            pinInclDir, joinpath(pinInclDir, "gen"),
-            joinpath(PINPATH, "extras/components/include")]
+                      pinInclDir, joinpath(pinInclDir, "gen"),
+                      joinpath(PINPATH, "extras/components/include")]
 
     # Perform trace logging?
-    ##env["CPPFLAGS"] += " -D_LOG_TRACE_=1"
+    # env["CPPFLAGS"] += " -D_LOG_TRACE_=1"
 
     # Uncomment to get logging messages to stderr
-    ##env["CPPFLAGS"] += " -DDEBUG=1"
+    # env["CPPFLAGS"] += " -DDEBUG=1"
 
     # Be a Warning Nazi? (recommended)
     env["CPPFLAGS"] += " -Werror "
@@ -86,7 +92,8 @@ def buildSim(cppFlags, dir, type, pgo=None):
     env["PINCPPFLAGS"] = " -DMT_SAFE_LOG "
 
     # PIN-specific libraries
-    env["PINLINKFLAGS"] = " -Wl,--hash-style=sysv -Wl,-Bsymbolic -Wl,--version-script=" + joinpath(pinInclDir, "pintool.ver")
+    env["PINLINKFLAGS"] = " -Wl,--hash-style=sysv -Wl,-Bsymbolic -Wl,--version-script=" + \
+        joinpath(pinInclDir, "pintool.ver")
 
     # To prime system libs, we include /usr/lib and /usr/lib/x86_64-linux-gnu
     # first in lib path. In particular, this solves the issue that, in some
@@ -94,7 +101,7 @@ def buildSim(cppFlags, dir, type, pgo=None):
     # include symbols that we need or it's a different variant (we need
     # libelfg0-dev in Ubuntu systems)
     env["PINLIBPATH"] = ["/usr/lib", "/usr/lib/x86_64-linux-gnu", joinpath(PINPATH, "extras/" + xedName + "-intel64/lib"),
-            joinpath(PINPATH, "intel64/lib"), joinpath(PINPATH, "intel64/lib-ext")]
+                         joinpath(PINPATH, "intel64/lib"), joinpath(PINPATH, "intel64/lib-ext")]
 
     # Libdwarf is provided in static and shared variants, Ubuntu only provides
     # static, and I don't want to add -R<pin path/intel64/lib-ext> because
@@ -132,11 +139,11 @@ def buildSim(cppFlags, dir, type, pgo=None):
         HDF5PATH = os.getenv("HDF5PATH")
         env["CPPPATH"] += [joinpath(HDF5PATH, "include/")]
         env["LIBPATH"] += [joinpath(HDF5PATH, "lib/")]
-        env["RPATH"]   += [joinpath(HDF5PATH, "lib/")]
+        env["RPATH"] += [joinpath(HDF5PATH, "lib/")]
     else:
         env["CPPPATH"] += ["/usr/include/hdf5/serial"]
         env["LIBPATH"] += ["/usr/lib/x86_64-linux-gnu/hdf5/serial/"]
-        env["RPATH"]   += ["/usr/lib/x86_64-linux-gnu/hdf5/serial/"]
+        env["RPATH"] += ["/usr/lib/x86_64-linux-gnu/hdf5/serial/"]
 
     if os.environ.get("POLARSSLPATH"):
         POLARSSLPATH = os.environ["POLARSSLPATH"]
@@ -157,8 +164,10 @@ def buildSim(cppFlags, dir, type, pgo=None):
     if os.environ.get("GLIBCPATH"):
         GLIBCPATH = os.environ["GLIBCPATH"]
         env["LIBPATH"] += [joinpath(GLIBCPATH, "lib/")]
-        env["LINKFLAGS"] += ' -Wl,--rpath="' + joinpath(GLIBCPATH, "lib") + '" '
-        env["LINKFLAGS"] += ' -Wl,--dynamic-linker="' + joinpath(GLIBCPATH, "lib/ld-linux-x86-64.so.2") + '" '
+        env["LINKFLAGS"] += ' -Wl,--rpath="' + \
+            joinpath(GLIBCPATH, "lib") + '" '
+        env["LINKFLAGS"] += ' -Wl,--dynamic-linker="' + \
+            joinpath(GLIBCPATH, "lib/ld-linux-x86-64.so.2") + '" '
         env["CPPPATH"] += [joinpath(GLIBCPATH, "include/")]
 
     env["CPPPATH"] += ["."]
@@ -167,8 +176,10 @@ def buildSim(cppFlags, dir, type, pgo=None):
     env["PINLIBS"] += ["hdf5", "hdf5_hl"]
 
     # Harness needs these defined
-    env["CPPFLAGS"] += ' -DPIN_PATH="' + joinpath(PINPATH, "intel64/bin/pinbin") + '" '
-    env["CPPFLAGS"] += ' -DZSIM_PATH="' + joinpath(ROOT, joinpath(buildDir, "libzsim.so")) + '" '
+    env["CPPFLAGS"] += ' -DPIN_PATH="' + \
+        joinpath(PINPATH, "intel64/bin/pinbin") + '" '
+    env["CPPFLAGS"] += ' -DZSIM_PATH="' + \
+        joinpath(ROOT, joinpath(buildDir, "libzsim.so")) + '" '
 
     # Do PGO?
     if pgo == "generate":
@@ -176,36 +187,50 @@ def buildSim(cppFlags, dir, type, pgo=None):
         env["PINCPPFLAGS"] += genFlags
         env["PINLINKFLAGS"] += genFlags
     elif pgo == "use":
-        if useIcc: useFlags = " -prof-use "
-        else: useFlags = " -fprofile-use -fprofile-correction "
+        if useIcc:
+            useFlags = " -prof-use "
+        else:
+            useFlags = " -fprofile-use -fprofile-correction "
         # even single-threaded sims use internal threads, so we need correction
         env["PINCPPFLAGS"] += useFlags
         env["PINLINKFLAGS"] += useFlags
 
-    env.SConscript("src/SConscript", variant_dir=buildDir, exports= {'env' : env.Clone()})
+    env.SConscript(os.path.join(zsimpath, "src/SConscript"),
+                   variant_dir=buildDir, exports={'env': env.Clone()})
 
 ####
 
-AddOption('--buildDir', dest='buildDir', type='string', default="build/", nargs=1, action='store', metavar='DIR', help='Base build directory')
-AddOption('--d', dest='debugBuild', default=False, action='store_true', help='Do a debug build')
-AddOption('--o', dest='optBuild', default=False, action='store_true', help='Do an opt build (optimized, with assertions and symbols)')
-AddOption('--r', dest='releaseBuild', default=False, action='store_true', help='Do a release build (optimized, no assertions, no symbols)')
-AddOption('--p', dest='pgoBuild', default=False, action='store_true', help='Enable PGO')
-AddOption('--pgoPhase', dest='pgoPhase', default="none", action='store', help='PGO phase (just run with --p to do them all)')
+
+AddOption('--buildDir', dest='buildDir', type='string', default=os.path.join(zsimpath,
+          "build"), nargs=1, action='store', metavar='DIR', help='Base build directory')
+AddOption('--d', dest='debugBuild', default=False,
+          action='store_true', help='Do a debug build')
+AddOption('--o', dest='optBuild', default=False, action='store_true',
+          help='Do an opt build (optimized, with assertions and symbols)')
+AddOption('--r', dest='releaseBuild', default=False, action='store_true',
+          help='Do a release build (optimized, no assertions, no symbols)')
+AddOption('--p', dest='pgoBuild', default=False,
+          action='store_true', help='Enable PGO')
+AddOption('--pgoPhase', dest='pgoPhase', default="none",
+          action='store', help='PGO phase (just run with --p to do them all)')
 
 
 baseBuildDir = GetOption('buildDir')
 buildTypes = []
-if GetOption('debugBuild'): buildTypes.append("debug")
-if GetOption('releaseBuild'): buildTypes.append("release")
-if GetOption('optBuild') or len(buildTypes) == 0: buildTypes.append("opt")
+if GetOption('debugBuild'):
+    buildTypes.append("debug")
+if GetOption('releaseBuild'):
+    buildTypes.append("release")
+if GetOption('optBuild') or len(buildTypes) == 0:
+    buildTypes.append("opt")
 
-march = "core2" # ensure compatibility across condor nodes
-#march = "native" # for profiling runs
+march = "core2"  # ensure compatibility across condor nodes
+# march = "native" # for profiling runs
 
 buildFlags = {"debug": "-g -O0",
-              "opt": "-march=%s -g -O3 -funroll-loops" % march, # unroll loops tends to help in zsim, but in general it can cause slowdown
-              "release": "-march=%s -O3 -DNASSERT -funroll-loops -fweb" % march} # fweb saves ~4% exec time, but makes debugging a world of pain, so careful
+              # unroll loops tends to help in zsim, but in general it can cause slowdown
+              "opt": "-march=%s -g -O3 -funroll-loops" % march,
+              "release": "-march=%s -O3 -DNASSERT -funroll-loops -fweb" % march}  # fweb saves ~4% exec time, but makes debugging a world of pain, so careful
 
 pgoPhase = GetOption('pgoPhase')
 
@@ -227,10 +252,12 @@ if GetOption('pgoBuild'):
         genCmd = "scons -j16 --pgoPhase=generate-" + type
         runCmds = []
         for cfg in trainCfgs:
-            runCmd = "mkdir -p pgo-tmp && cd pgo-tmp && ../" + baseDir + "/zsim ../tests/" + cfg + " && cd .."
+            runCmd = "mkdir -p pgo-tmp && cd pgo-tmp && ../" + \
+                baseDir + "/zsim ../tests/" + cfg + " && cd .."
             runCmds.append(runCmd)
         useCmd = "scons -j16 --pgoPhase=use-" + type
-        Environment(ENV = os.environ).Command("dummyTgt-" + type, [], " && ".join([genCmd] + runCmds + [useCmd]))
+        Environment(ENV=os.environ).Command("dummyTgt-" + type,
+                                            [], " && ".join([genCmd] + runCmds + [useCmd]))
 elif pgoPhase.startswith("generate"):
     type = pgoPhase.split("-")[1]
     buildSim(buildFlags[type], baseBuildDir, "pgo-" + type, "generate")
@@ -238,7 +265,8 @@ elif pgoPhase.startswith("use"):
     type = pgoPhase.split("-")[1]
     buildSim(buildFlags[type], baseBuildDir, "pgo-" + type, "use")
     baseDir = joinpath(baseBuildDir, "pgo-" + type)
-    Depends(Glob(joinpath(baseDir, "*.os")), "pgo-tmp/zsim.out") #force a rebuild
+    Depends(Glob(joinpath(baseDir, "*.os")),
+            "pgo-tmp/zsim.out")  # force a rebuild
 else:
     for type in buildTypes:
         buildSim(buildFlags[type], baseBuildDir, type)
