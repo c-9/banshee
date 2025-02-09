@@ -17,8 +17,6 @@
 
 /build
 /bin
-/run.sh
-/*.h5
-/*.out
+/output
 /.sconsign.dblite
-/heartbeat
+

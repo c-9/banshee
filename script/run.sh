@@ -11,5 +11,5 @@ sudo sysctl -w kernel.shmmax=18446744073692774399
 sudo sysctl -w kernel.yama.ptrace_scope=0
 
 cd $ZSIMPATH
-./bin/zsim tests/debug.cfg
+./bin/zsim tests/debug.cfg output
 cd -
